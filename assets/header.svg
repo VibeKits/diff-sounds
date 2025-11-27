@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 464.87 166.7">
+  <defs>
+    <style>
+      .cls-1 {
+        font-family: ArialMT, Arial;
+        font-size: 49.14px;
+      }
+
+      .cls-1, .cls-2 {
+        fill: #fff;
+      }
+    </style>
+  </defs>
+  <rect class="cls-2" x="90.45" y="38.82" width="9.22" height="89.05" rx="4.61" ry="4.61"/>
+  <rect class="cls-2" x="104.66" y="67.67" width="9.22" height="31.35" rx="4.61" ry="4.61"/>
+  <rect class="cls-2" x="118.88" y="55.15" width="9.22" height="56.39" rx="4.61" ry="4.61"/>
+  <rect class="cls-2" x="133.1" y="76.48" width="9.22" height="13.74" rx="4.61" ry="4.61"/>
+  <rect class="cls-2" x="76.23" y="67.67" width="9.22" height="31.35" rx="4.61" ry="4.61" transform="translate(161.68 166.7) rotate(180)"/>
+  <rect class="cls-2" x="62.01" y="55.15" width="9.22" height="56.39" rx="4.61" ry="4.61" transform="translate(133.24 166.7) rotate(180)"/>
+  <rect class="cls-2" x="47.79" y="76.48" width="9.22" height="13.74" rx="4.61" ry="4.61" transform="translate(104.81 166.7) rotate(-180)"/>
+  <text class="cls-1" transform="translate(163.91 99.29)"><tspan x="0" y="0">Diff Sounds</tspan></text>
+</svg>

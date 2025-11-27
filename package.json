@@ -1,0 +1,166 @@
+{
+  "name": "diff-sounds",
+  "displayName": "Diff Sounds",
+  "description": "A VS Code extension that provides audio feedback when editing in diff/compare views. Features immersive tech sounds perfect for developers who enjoy cinematic programming audio during code reviews.",
+  "version": "0.0.1",
+  "publisher": "vibe-kit",
+  "repository": "https://github.com/VibeKits/diff-sounds",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onView:diffSoundsView"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "diffsounds",
+          "title": "Diff Sounds",
+          "icon": "icons/ActivityBarIcon.svg"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "diff-sounds.enable",
+        "title": "Diff Sounds: Enable"
+      },
+      {
+        "command": "diff-sounds.disable",
+        "title": "Diff Sounds: Disable"
+      },
+      {
+        "command": "diff-sounds.reloadSounds",
+        "title": "Diff Sounds: Reload"
+      }
+    ],
+    "configuration": {
+      "title": "Diff Sounds",
+      "properties": {
+        "diffSounds.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the diff sounds feature."
+        },
+        "diffSounds.attributionMode": {
+          "type": "string",
+          "enum": [
+            "any",
+            "live-only",
+            "git-only"
+          ],
+          "default": "any",
+          "enumDescriptions": [
+            "Play for any edit when attribution unavailable. Note: may be noisy.",
+            "Only when Live Share attribution matches author name.",
+            "Only for git-authored changes matching author name."
+          ],
+          "description": "Attribution mode for playing sounds."
+        },
+        "diffSounds.authorName": {
+          "type": "string",
+          "description": "Name to match for edit attribution (future feature)."
+        },
+        "diffSounds.volume": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 100,
+          "description": "Master sound volume (0-100)."
+        },
+        "diffSounds.addSound.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable add sound."
+        },
+        "diffSounds.addSound.volume": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 50,
+          "description": "Add sound volume (0-100)."
+        },
+        "diffSounds.removeSound.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable remove sound."
+        },
+        "diffSounds.removeSound.volume": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 50,
+          "description": "Remove sound volume (0-100)."
+        },
+        "diffSounds.debounceMs": {
+          "type": "integer",
+          "default": 1,
+          "minimum": 0,
+          "description": "Debounce window in milliseconds."
+        },
+        "diffSounds.diffOpenSound.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable diff open sound."
+        },
+        "diffSounds.diffOpenSound.volume": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 100,
+          "description": "Diff open sound volume (0-100)."
+        },
+        "diffSounds.diffActiveSound.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable diff active sound."
+        },
+        "diffSounds.diffActiveSound.volume": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 100,
+          "description": "Diff active sound volume (0-100)."
+        },
+        "diffSounds.diffCloseSound.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable diff close sound."
+        },
+        "diffSounds.diffCloseSound.volume": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 100,
+          "description": "Diff close sound volume (0-100)."
+        }
+      }
+    },
+    "views": {
+      "diffsounds": [
+        {
+          "id": "diffSoundsView",
+          "name": "Settings",
+          "type": "webview"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "18.x",
+    "@types/vscode": "^1.74.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {}
+}
