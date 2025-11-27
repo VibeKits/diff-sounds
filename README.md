@@ -1,5 +1,7 @@
 # Diff Sounds
 
+![Header](assets/header.svg)
+
 A VS Code extension that provides audio feedback when editing in diff/compare views. Features immersive tech sounds perfect for developers who enjoy cinematic programming audio during code reviews.
 
 ## Features
