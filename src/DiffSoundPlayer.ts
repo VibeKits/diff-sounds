@@ -20,7 +20,6 @@ export class DiffSoundPlayer {
 
   constructor(extensionUri: vscode.Uri) {
     this.extensionUri = extensionUri;
-    this.initializeAudioWebview();
   }
 
   private async initializeAudioWebview() {
@@ -149,6 +148,12 @@ export class DiffSoundPlayer {
             color: var(--vscode-errorForeground, #f48771);
             font-weight: 500;
           }
+
+          .instructions .note {
+            color: var(--vscode-descriptionForeground);
+            font-style: italic;
+            font-weight: normal;
+          }
         </style>
       </head>
       <body>
@@ -186,6 +191,7 @@ export class DiffSoundPlayer {
           </div>
           <div class="instructions">
             <p>You can move this tab to another window and minimize it to reduce clutter. Just make sure to click 'here' to activate audio before minimizing the tab.</p>
+            <p class="note">To prevent this tab from opening on startup, disable the Diff Sounds extension via Command Palette ('Diff Sounds: Disable') or through the extension's settings panel.</p>
             <p>Important: Do not close this tab, as closing it will disable all extension functionality.</p>
           </div>
         </div>
@@ -210,9 +216,17 @@ export class DiffSoundPlayer {
             if (audioContext && audioContext.state === 'suspended') {
               audioContext.resume().then(() => {
                 vscode.postMessage({ type: 'audioContextActivated' });
+                // Start diffactive if there are open diff tabs
+                if (currentConfig && currentConfig.openDiffTabCount > 0 && currentConfig.diffActiveSound && currentConfig.diffActiveSound.enabled) {
+                  vscode.postMessage({ type: 'playDiffActive' });
+                }
               });
             } else {
               vscode.postMessage({ type: 'audioContextActivated' });
+              // Start diffactive if there are open diff tabs
+              if (currentConfig && currentConfig.openDiffTabCount > 0 && currentConfig.diffActiveSound && currentConfig.diffActiveSound.enabled) {
+                vscode.postMessage({ type: 'playDiffActive' });
+              }
             }
           }
 
@@ -250,17 +264,24 @@ export class DiffSoundPlayer {
           }
 
           function playAudio(soundId, volume = 1.0, options) {
+            if (!audioContext || !audioBuffers[soundId]) {
+              vscode.postMessage({ type: 'audioPlayError', sound: soundId, error: 'No audio buffer loaded' });
+              return;
+            }
+
+            if (audioContext.state === 'suspended') {
+              audioContext.resume().then(() => {
+                playSound(soundId, volume, options);
+              }).catch(error => {
+                vscode.postMessage({ type: 'audioPlayError', sound: soundId, error: error.message });
+              });
+            } else {
+              playSound(soundId, volume, options);
+            }
+          }
+
+          function playSound(soundId, volume, options) {
             try {
-              if (!audioContext || !audioBuffers[soundId]) {
-                vscode.postMessage({ type: 'audioPlayError', sound: soundId, error: 'No audio buffer loaded' });
-                return;
-              }
-
-              // Resume audio context if suspended
-              if (audioContext.state === 'suspended') {
-                audioContext.resume();
-              }
-
               const source = audioContext.createBufferSource();
               const gainNode = audioContext.createGain();
 
@@ -409,6 +430,20 @@ export class DiffSoundPlayer {
 
   async preloadSounds(config: DiffSoundsConfig, soundDetector: import('./SoundDetector').SoundDetector) {
     console.log('Diff Sounds: Preloading sound file paths');
+
+    // Handle audio webview panel based on enabled state
+    if (config.enabled) {
+      if (!this.audioWebviewPanel) {
+        console.log('Diff Sounds: Creating audio webview panel (extension enabled)');
+        await this.initializeAudioWebview();
+      }
+    } else {
+      if (this.audioWebviewPanel) {
+        console.log('Diff Sounds: Disposing audio webview panel (extension disabled)');
+        this.audioWebviewPanel.dispose();
+        this.audioWebviewPanel = undefined;
+      }
+    }
 
     // Store current config for potential reloads
     this.currentConfig = { ...config };

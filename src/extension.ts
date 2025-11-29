@@ -15,6 +15,7 @@ let isDuringConfigChange = false; // Global flag to disable sounds during UI con
 let openDiffTabCount = 0; // Track number of open diff tabs for diffactive loop management
 let wasDiffActivePlaying = false; // Track if diffactive was playing when disabled
 let isDisabled = false; // Global flag to immediately disable sounds
+let wasEnabled = false; // Track previous enabled state for notification logic
 
 // Unified suppression timeout to prevent spurious sounds during UI changes
 const UI_INTERACTION_SUPPRESSION_MS = 2000; // 2 seconds
@@ -56,6 +57,8 @@ export function activate(context: vscode.ExtensionContext) {
   // Load initial config and preload sounds
   currentConfig = loadConfig();
   console.log('Diff Sounds: Initial config loaded:', currentConfig);
+  wasEnabled = currentConfig?.enabled || false;
+  isDisabled = !currentConfig?.enabled;
   if (currentConfig) {
     soundPlayer.preloadSounds(currentConfig, soundDetector);
   } else {
@@ -71,7 +74,37 @@ export function activate(context: vscode.ExtensionContext) {
         isDuringConfigChange = true; // Disable ALL sound playing during UI changes
 
         const newConfig = getConfig();
+
+        // Sync isDisabled flag with config state
+        isDisabled = !newConfig.enabled;
+
+        // Stop all sounds immediately when extension is disabled
+        if (!newConfig.enabled) {
+          console.log('Diff Sounds: Extension disabled, stopping all sounds');
+          soundPlayer.stopAudio('diffactive');
+          soundPlayer.stopAudio('add');
+          soundPlayer.stopAudio('remove');
+          soundPlayer.stopAudio('diffopen');
+          soundPlayer.stopAudio('diffclose');
+        }
+
+        // Update cached config
+        currentConfig = newConfig;
+
+        // Show notification if extension was just enabled
+        if (newConfig.enabled && !wasEnabled) {
+          console.log('Diff Sounds: Showing notification for extension re-enable');
+          vscode.window.showInformationMessage('Diff Sounds extension enabled. Please activate audio in the "Diff Sounds Audio Player" tab.');
+        }
+        wasEnabled = newConfig.enabled;
+
         soundPlayer.preloadSounds(newConfig, soundDetector);
+
+        // If extension was just enabled and there are open diff tabs, restart the diff active loop
+        if (!wasEnabled && newConfig.enabled && openDiffTabCount > 0 && newConfig.diffActiveSound.enabled && !isDisabled) {
+          console.log('Diff Sounds: Restarting diff active loop after re-enabling with open diffs');
+          soundPlayer.playDiffActive(newConfig);
+        }
 
         // Re-enable sound playing after config propagation (unified UI interaction suppression period)
         setTimeout(() => {
@@ -96,8 +129,8 @@ export function activate(context: vscode.ExtensionContext) {
       soundPlayer.stopAudio('diffopen');
       soundPlayer.stopAudio('diffclose');
 
-      // Update config
-      vscode.workspace.getConfiguration('diffSounds').update('enabled', true);
+      // Update config - always use global state for extension-wide settings
+      vscode.workspace.getConfiguration('diffSounds').update('enabled', true, vscode.ConfigurationTarget.Global);
 
       // Immediately update UI
       const newConfig = getVSCodeConfig();
@@ -119,8 +152,8 @@ export function activate(context: vscode.ExtensionContext) {
       // Track if diffactive was playing
       wasDiffActivePlaying = openDiffTabCount > 0;
 
-      // Update config
-      vscode.workspace.getConfiguration('diffSounds').update('enabled', false);
+      // Update config - always use global state for extension-wide settings
+      vscode.workspace.getConfiguration('diffSounds').update('enabled', false, vscode.ConfigurationTarget.Global);
 
       // Immediately update UI
       const newConfig = getVSCodeConfig();
@@ -139,16 +172,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.registerWebviewViewProvider('diffSoundsView', new DiffSoundsViewProvider())
   );
 
-  // Listen for config changes and preload sounds
-  context.subscriptions.push(
-    vscode.workspace.onDidChangeConfiguration(e => {
-      if (e.affectsConfiguration('diffSounds')) {
-        lastConfigChangeTime = Date.now(); // Suppress text document events for UI interaction period
-        const newConfig = getConfig();
-        soundPlayer.preloadSounds(newConfig, soundDetector);
-      }
-    })
-  );
+
 
   // Listen for text changes (debounced sound play)
   context.subscriptions.push(
@@ -245,9 +269,9 @@ export function activate(context: vscode.ExtensionContext) {
           console.log(`Diff Sounds: Diff tab opened, count now: ${openDiffTabCount}, was empty: ${wasEmpty}`);
 
           if (config.diffOpenSound.enabled) {
-            // Register completion callback to start diffactive when diffopen finishes
+            // Register completion callback to start diffactive when diffopen finishes (only for first tab)
             soundPlayer.onSoundCompleted('diffopen', () => {
-              if (openDiffTabCount > 0 && config.diffActiveSound.enabled && !isDisabled && config.enabled) {
+              if (wasEmpty && config.diffActiveSound.enabled && !isDisabled && config.enabled) {
                 console.log('Diff Sounds: diffopen completed, starting diffactive loop');
                 soundPlayer.playDiffActive(config);
               }
@@ -255,8 +279,8 @@ export function activate(context: vscode.ExtensionContext) {
 
             soundPlayer.playDiffOpen(config);
             console.log('Diff Sounds: Playing diffopen, diffactive will start when it completes');
-          } else if (config.diffActiveSound.enabled) {
-            // No diffopen sound, start active immediately
+          } else if (wasEmpty && config.diffActiveSound.enabled) {
+            // No diffopen sound, start active immediately (only for first tab)
             soundPlayer.playDiffActive(config);
           }
         }
@@ -396,13 +420,18 @@ class DiffSoundsViewProvider implements vscode.WebviewViewProvider {
     webviewView.webview.html = this.getWebviewContent();
 
     const config = getConfig();
+    (config as any).openDiffTabCount = openDiffTabCount;
     webviewView.webview.postMessage({ type: 'initConfig', config });
 
     webviewView.webview.onDidReceiveMessage(async message => {
       console.log('Extension: Received message from webview:', message);
       if (message.type === 'updateSetting') {
         // Handle all setting updates with persistence
-        await vscode.workspace.getConfiguration('diffSounds').update(message.key, message.value, vscode.ConfigurationTarget.Global);
+        // Determine the appropriate configuration target based on where the setting is currently defined
+        const config = vscode.workspace.getConfiguration('diffSounds');
+        const inspect = config.inspect(message.key);
+        const target = inspect?.workspaceValue !== undefined ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+        await config.update(message.key, message.value, target);
         // Config changes will be handled by the onDidChangeConfiguration listener
       } else if (message.type === 'testSound') {
         console.log('Extension: Executing test command for', message.sound, 'with volume', message.volume);
@@ -477,6 +506,12 @@ class DiffSoundsViewProvider implements vscode.WebviewViewProvider {
           type: 'diagnosticResult',
           info: `Extension Path: ${extensionPath}\nUsing Web Audio API for zero-latency playback\nWeb Audio context for streaming`
         });
+      } else if (message.type === 'playDiffActive') {
+        console.log('Extension: Webview requested to play diffactive');
+        const config = getConfig();
+        if (config.diffActiveSound.enabled && !isDisabled) {
+          soundPlayer.playDiffActive(config);
+        }
       }
     });
 

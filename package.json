@@ -2,7 +2,7 @@
   "name": "diff-sounds",
   "displayName": "Diff Sounds",
   "description": "A VS Code extension that provides audio feedback when editing in diff/compare views. Features immersive tech sounds perfect for developers who enjoy cinematic programming audio during code reviews.",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "publisher": "vibe-kit",
   "repository": "https://github.com/VibeKits/diff-sounds",
   "engines": {
